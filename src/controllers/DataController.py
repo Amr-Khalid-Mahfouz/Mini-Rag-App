@@ -19,20 +19,20 @@ class DataController (BaseController):
         
         return True, ResponseSignal.FILE_VALIDATE_SCUCCEDED.value
     
-    def generate_unique_file_name(self, file_name: str, project_id: str):
-        random_file_name = self.generate_random_string() # length = 12
+    def generate_unique_file_path(self, file_name: str, project_id: str):
+        random_key = self.generate_random_string() # length = 12
         project_path = ProjectController.get_project_path(self, project_id)
 
         cleaned_file_name = self.get_clean_file_name(file_name)
 
-        new_file_path = os.path.join(project_path, random_file_name + "_" + cleaned_file_name)
+        new_file_path = os.path.join(project_path, random_key + "_" + cleaned_file_name)
 
         # recheck so that the name does not exist
         while os.path.exists(new_file_path):
-            random_file_name = self.generate_random_string() # length = 12
-            new_file_path = os.path.join(project_path, random_file_name + "_" + cleaned_file_name)
+            random_key = self.generate_random_string() # length = 12
+            new_file_path = os.path.join(project_path, random_key + "_" + cleaned_file_name)
         
-        return new_file_path
+        return new_file_path, random_key + "_" + cleaned_file_name
 
     def get_clean_file_name(self, file_name: str):
         cleaned_file_name = re.sub(r"[^\w.]", '', file_name.strip())
