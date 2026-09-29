@@ -13,7 +13,7 @@ async def lifespan(app: FastAPI):
     yield
     app.mongo_conn.close()
 
-app = FastAPI(lifespan=life)
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(base.base_router)
 app.include_router(data.data_router)
