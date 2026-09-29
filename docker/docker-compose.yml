@@ -1,0 +1,15 @@
+services:
+  mongodb:
+    image: mongo:8.3.11-noble
+    
+    container_name: mongodb
+    
+    ports:
+      - "27017:27017" #27017 is the default, the left side is the actual value, right side is the value I want
+    
+    volumes:
+      - ./mongodb:/data/db
+    restart: unless-stopped
+
+networks:
+  backend:
