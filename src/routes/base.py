@@ -7,9 +7,9 @@ base_router = APIRouter(
 )
 
 @base_router.get("/") # default route
-async def welcome(app_settings: settings=Depends(get_settings)): # run this function only if this dependency is valid/usable
-    app_name = settings.APP_NAME
-    app_ver = settings.APP_VERSION
+async def welcome(app_settings: Settings=Depends(get_settings)): # run this function only if this dependency is valid/usable
+    app_name = Settings.APP_NAME
+    app_ver = Settings.APP_VERSION
     
     return {
         'app_name' : app_name,

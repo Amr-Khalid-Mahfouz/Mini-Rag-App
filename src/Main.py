@@ -4,7 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from helpers.config import get_settings, Settings
 
 # instead of app.on_event('startup')
-@asynccontextmanager
+# @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
