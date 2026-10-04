@@ -13,3 +13,15 @@ class Project(BaseModel):
     project_id: Annotated[str, Field(..., min_length=1), AfterValidator(validate_project_id)]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def get_indices(cls):
+        return [
+            {
+                "key": [
+                    ("project_id", 1) # 1 = ascneding
+                ],
+                "name": 'project_id_index',
+                "unique": True
+            }
+        ]

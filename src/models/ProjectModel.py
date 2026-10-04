@@ -5,8 +5,31 @@ from models import DBEnum
 class ProjectModel(BaseDataModel):
     
     def __init__(self, db_client: object):
+
         super().__init__(db_client=db_client)
         self.collection = db_client[DBEnum.COLLECTION_PROJECT_NAME.value]
+
+    @classmethod
+    async def create_instance(cls, db_client: object):
+        """function to create an instance of this class instead of __init__, since we need to use async"""
+        instance = cls(db_client)
+        await instance.init_collection()
+        return instance
+
+    # applies indexing to the database 
+    async def init_collection(self):
+        all_collections = await self.db_client.list_collection_names()
+        
+        if DBEnum.COLLECTION_PROJECT_NAME.value not in all_collections:
+            self.collection = self.db_client[DBEnum.COLLECTION_PROJECT_NAME.value]
+            indices = Project.get_indices()
+
+            for index in indices:
+                await self.collection.create_index(
+                    index['key'],
+                    name=index['name'],
+                    unique=index['unique']
+                )
 
     async def create_project(self, project: Project):
         result = await self.collection.insert_one(project.model_dump(by_alias=True, exclude_unset=True)) # model_dump = to_dict in pydantic 

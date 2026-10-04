@@ -22,7 +22,7 @@ async def upload_data(
     app_settings: Settings=Depends(get_settings)):
 
     # get the project model from the FastAPI app object
-    project_model = ProjectModel(db_client=request.app.db_client)
+    project_model = await ProjectModel.create_instance(db_client=request.app.db_client)
     
     project = await project_model.get_project_or_create(
         project_id=project_id
@@ -77,7 +77,7 @@ async def process_endpoint(
     do_reset = process_request.do_reset
     overlap_size = process_request.overlap_size
 
-    project_model = ProjectModel(db_client=request.app.db_client)
+    project_model = await ProjectModel.create_instance(db_client=request.app.db_client)
     
     project = await project_model.get_project_or_create(
             project_id=project_id
@@ -111,7 +111,7 @@ async def process_endpoint(
         for i, chunk in enumerate(chunks)
     ]
 
-    chunk_model = ChunkModel(db_client=request.app.db_client)
+    chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
 
     deleted_chunks = 0
     if do_reset:

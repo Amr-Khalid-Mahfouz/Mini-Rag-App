@@ -10,3 +10,15 @@ class DataChunk(BaseModel):
     chunk_project_id: ObjectId
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @classmethod
+    def get_indices(cls):
+        return [
+            {
+                "key": [
+                    ("chunk_project_id", 1) # 1 = ascneding
+                ],
+                "name": 'chunk_project_id_index',
+                "unique": False
+            }
+        ]
