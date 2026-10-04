@@ -1,6 +1,7 @@
 from .BaseDataModel import BaseDataModel
 from models.db_schemas import Asset
 from models import DBEnum
+from bson import ObjectId
 
 class AssetModel(BaseDataModel):
     
@@ -30,5 +31,21 @@ class AssetModel(BaseDataModel):
                     unique=index['unique']
                 )
 
-    async def create_asset(self, Asset):
-        pass
+    async def create_asset(self, asset: Asset):
+        result = await self.collection.insert_one(asset.model_dump(by_alias=True, exclude_unset=True))
+        asset.id = result.inserted_id
+        
+        return asset
+
+    async def get_all_project_assets(self, asset_project_id: str):
+        cursor = await self.collection.find({
+            "asset_project_id": ObjectId(asset_project_id) if isinstance(asset_project_id, str) else asset_project_id
+            }).tolist(length=None)
+        
+        assets = []
+        async for doc in cursor:
+            assets.append(
+                Asset(**doc)
+            )
+
+        return assets

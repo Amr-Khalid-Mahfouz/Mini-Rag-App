@@ -5,14 +5,14 @@ from datetime import datetime
 
 class Asset(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
-    
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     asset_project_id: ObjectId
     asset_type: str = Field(..., min_length=1)
     asset_name: str = Field(..., min_length=1)
     asset_size: int = Field(ge=0, defualt=None)
     asset_config: dict = Field(default=None)
-    asset_pushed_at: datetime = Field(default=datetime.now(datetime.timezone.utc))
+    asset_pushed_at: datetime = Field(default=datetime.utcnow())
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def get_indices(cls):
