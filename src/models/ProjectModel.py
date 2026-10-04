@@ -9,7 +9,7 @@ class ProjectModel(BaseDataModel):
         self.collection = db_client[DBEnum.COLLECTION_PROJECT_NAME.value]
 
     async def create_project(self, project: Project):
-        result = await self.collection.insert_one(project.model_dump()) # model_dump = to_dict in pydantic 
+        result = await self.collection.insert_one(project.model_dump(by_alias=True, exclude_unset=True)) # model_dump = to_dict in pydantic 
         project._id = result.inserted_id
         return project._id
 

@@ -7,6 +7,7 @@ import aiofiles
 import os
 from schemas import ProcessRequest
 from models import ProjectModel, ChunkModel
+from models.db_schemas import DataChunk
 
 data_router = APIRouter(
     prefix="/api/data",
@@ -66,10 +67,22 @@ async def upload_data(
 
 @data_router.post('/process/{project_id}')
 async def process_endpoint(
+    request: Request,
     project_id: str,
-    process_request: ProcessRequest):
-    
+    process_request: ProcessRequest
+    ):
+
     file_id = process_request.file_id
+    chunk_size = process_request.chunk_size
+    do_reset = process_request.do_reset
+    overlap_size = process_request.overlap_size
+
+    project_model = ProjectModel(db_client=request.app.db_client)
+    
+    project = await project_model.get_project_or_create(
+            project_id=project_id
+            )
+
     process_controller = ProcessController(project_id)
 
     file_content = process_controller.get_file_content(file_id)
@@ -77,8 +90,8 @@ async def process_endpoint(
     chunks = process_controller.process_file_content(
         file_content=file_content,
         file_id=file_id,
-        chunk_size=process_request.chunk_size,
-        chunk_overlap=process_request.overlap_size,)
+        chunk_size=chunk_size,
+        chunk_overlap=overlap_size,)
 
     if chunks is None or len(chunks) == 0: # error
         return JSONResponse(
@@ -88,4 +101,28 @@ async def process_endpoint(
             }
         )
     
-    return chunks
+    chunk_records = [
+        DataChunk( 
+            chunk_text= chunk.page_content,
+            meta_data= chunk.metadata, 
+            chunk_order=i+1,
+            chunk_project_id=project.id
+            )
+        for i, chunk in enumerate(chunks)
+    ]
+
+    chunk_model = ChunkModel(db_client=request.app.db_client)
+
+    deleted_chunks = 0
+    if do_reset:
+        deleted_chunks = await chunk_model.delete_chunks_by_project_id(project.id)
+    
+    no_records = await chunk_model.insert_many_chunks(chunk_records)
+    
+    return JSONResponse(
+        content={
+            "signal": ResponseSignal.FILE_PROCESSING_SUCCEDED.value,
+            "inserted_chunks": no_records,
+            "deleted_chunks": deleted_chunks
+        }
+    )
