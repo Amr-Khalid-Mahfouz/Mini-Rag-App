@@ -37,15 +37,26 @@ class AssetModel(BaseDataModel):
         
         return asset
 
-    async def get_all_project_assets(self, asset_project_id: str):
+    async def get_all_project_assets(self, asset_project_id: str, asset_type: str):
         cursor = await self.collection.find({
-            "asset_project_id": ObjectId(asset_project_id) if isinstance(asset_project_id, str) else asset_project_id
-            }).tolist(length=None)
+            "asset_project_id": ObjectId(asset_project_id) if isinstance(asset_project_id, str) else asset_project_id,
+            "asset_type": asset_type
+            }).to_list(length=None)
         
         assets = []
-        async for doc in cursor:
+        for doc in cursor:
             assets.append(
                 Asset(**doc)
             )
 
         return assets
+
+    async def get_asset_by_asset_name(self, asset_name: str, asset_project_id: str):
+        result = await self.collection.find_one({
+            "asset_project_id": ObjectId(asset_project_id) if isinstance(asset_project_id, str) else asset_project_id,
+            "asset_name": asset_name
+        })
+
+        if result:
+            return Asset(**result)
+        return None
