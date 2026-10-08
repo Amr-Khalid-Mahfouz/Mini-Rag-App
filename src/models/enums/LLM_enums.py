@@ -4,7 +4,20 @@ class LLMEnum(Enum):
     OPENAI = "OPENAI"
     COHERE = "COHERE"
 
-class OpenAIEnUm(Enum):
+class OpenAIEnum(Enum):
     SYSTEM = "system"
     USER = "user"
     ASSISTANT = "assistant"
+
+class CohereEnum(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+
+    DOCUMENT = 'search_document'
+    QUERY = 'search_query'
+
+
+class DocumentType(Enum):
+    DOCUMENT = 'document'
+    QUERY = 'query'

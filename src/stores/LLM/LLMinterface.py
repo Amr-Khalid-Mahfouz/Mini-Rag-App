@@ -12,7 +12,7 @@ class LLMInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def embed_text(self, text: str, document_type: str):
+    def embed_text(self, text: str, document_type: str = None):
         pass
         
     @classmethod
