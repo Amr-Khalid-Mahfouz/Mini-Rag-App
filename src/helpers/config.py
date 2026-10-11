@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     DEFUALT_GENERATION_MAX_CHAR: int = None
     DEFAULT_INPUT_MAX_CHAR: int = None
 
+    # VectorDB config 
+    VECTOR_DB_BACKEND: str = None
+    VECTOR_DB_PATH: str = None
+    VECTOR_DB_DISTANCE_METHOD: str = None
+
     class Config:
         env_file = ".env"
 
