@@ -20,9 +20,12 @@ class Settings(BaseSettings):
     OPENAI_API_URL: str = None
     COHERE_API_KEY: str = None
 
+    QWEN_API_KEY: str = None
+    QWEN_API_URL: str = None
+
     GENERATION_MODEL_ID: str = None
     EMBDEDING_MODEL_ID: str = None
-    EMBDEDING_MODEL_SIZE: str = None
+    EMBDEDING_MODEL_SIZE: int = None
 
     GENERATION_DEFUALT_TEMPERATURE: int = None
     DEFUALT_GENERATION_MAX_CHAR: int = None

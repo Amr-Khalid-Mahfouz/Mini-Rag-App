@@ -9,7 +9,6 @@ import logging
 from schemas import ProcessRequest
 from models import ProjectModel, ChunkModel, AssetModel
 from models.db_schemas import DataChunk, Asset
-from bson.objectid import ObjectId
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -73,7 +72,7 @@ async def upload_data(
 
     return JSONResponse(
         content={
-            "signal":ResponseSignal.FILE_UPLOAD_SUCCEDED.value,
+            "signal":ResponseSignal.FILE_UPLOAD_SUCCEEDED.value,
             'file_id': str(asset_record.id),
             'project_id': str(project.id)
             }
@@ -180,9 +179,9 @@ async def process_endpoint(
 
     return JSONResponse(
         content={
-            "signal": ResponseSignal.FILE_PROCESSING_SUCCEDED.value,
+            "signal": ResponseSignal.FILE_PROCESSING_SUCCEEDED.value,
             "inserted_chunks": no_records,
             "deleted_chunks": deleted_chunks,
             "files_processes": no_files
         }
-    )
+    ) 

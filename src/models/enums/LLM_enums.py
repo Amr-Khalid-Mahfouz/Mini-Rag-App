@@ -3,6 +3,10 @@ from enum import Enum
 class LLMEnum(Enum):
     OPENAI = "OPENAI"
     COHERE = "COHERE"
+    QWEN = "QWEN"
+
+class QwenEnum(Enum):
+    pass
 
 class OpenAIEnum(Enum):
     SYSTEM = "system"
@@ -16,7 +20,6 @@ class CohereEnum(Enum):
 
     DOCUMENT = 'search_document'
     QUERY = 'search_query'
-
 
 class DocumentType(Enum):
     DOCUMENT = 'document'

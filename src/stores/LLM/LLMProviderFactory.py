@@ -1,5 +1,5 @@
 from models import LLMEnum
-from providers import OpenAIProvider, CohereProvider
+from stores.LLM.providers import OpenAICompatibleProvider, CohereProvider
 from helpers import Settings, get_settings
 
 class LLMProviderFactory:
@@ -9,7 +9,7 @@ class LLMProviderFactory:
 
     def create(self, provider_name: str):
         if provider_name == LLMEnum.OPENAI.value:
-            provider = OpenAIProvider(
+            provider = OpenAICompatibleProvider(
                 api_key=self.config.OPENAI_API_KEY,
                 api_url=self.config.OPENAI_API_URL,
                 default_generation_max_char=self.config.DEFUALT_GENERATION_MAX_CHAR,
@@ -25,5 +25,14 @@ class LLMProviderFactory:
                 default_input_max_char=self.config.DEFAULT_INPUT_MAX_CHAR,
                 temperature=self.config.GENERATION_DEFUALT_TEMPERATURE
             )
-        
+            
+        if provider_name == LLMEnum.QWEN.value:
+            provider = OpenAICompatibleProvider(
+                api_key=self.config.QWEN_API_KEY,
+                api_url=self.config.QWEN_API_URL,
+                default_generation_max_char=self.config.DEFUALT_GENERATION_MAX_CHAR,
+                default_input_max_char=self.config.DEFAULT_INPUT_MAX_CHAR,
+                temperature=self.config.GENERATION_DEFUALT_TEMPERATURE
+            )
+
         return provider

@@ -2,15 +2,17 @@ from ..LLMinterface import LLMInterface
 from models.enums import CohereEnum, DocumentType
 import cohere
 import logging
+from typing import List
 
 class CohereProvider(LLMInterface):
-    def __init__(self, model_id: str,
+   
+    def __init__(self,
                 api_key: str,
                 default_input_max_char: int = 1000,
                 default_generation_max_char: int = 1000,
                 temperature: float = 1.0
                 ):
-        self.model_id = model_id
+
         self.api_key = api_key
         self.default_generation_max_char = default_generation_max_char
         self.default_input_max_char = default_input_max_char
@@ -24,7 +26,7 @@ class CohereProvider(LLMInterface):
         self.client = cohere.ClientV2(
             api_key=self.api_key)
 
-        self.logger = logging.logger(__name__) # file name
+        self.logger = logging.getLogger(__name__) # file name
         
     def set_generation_model(self, model_id: str):
         self.generation_model_id = model_id
@@ -36,7 +38,7 @@ class CohereProvider(LLMInterface):
     def process_text(self, text: str):
         return text[:self.default_generation_max_char].strip()
     
-    def embed_text(self, text: str, document_type: str = None):
+    def embed_text(self, text: List[str], document_type: str = None):
         if not self.client:
             self.logger.error("CoHere client was not set")
             return None

@@ -1,4 +1,5 @@
 from abc import ABC,abstractmethod # instead of abstractclassmethod we use both @classmethod and @abstractmethod below it
+from typing import List
 
 class LLMInterface(ABC):
     @classmethod
@@ -12,7 +13,7 @@ class LLMInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def embed_text(self, text: str, document_type: str = None):
+    def embed_text(self, text: List[str], document_type: str = None):
         pass
         
     @classmethod

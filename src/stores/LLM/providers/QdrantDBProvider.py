@@ -1,9 +1,10 @@
-from vectordb import VectorDBInterface, DistanceMethodEnum
+from stores.vectordb import DistanceMethodEnum, VectordbInterface
 from typing import List
 from qdrant_client import QdrantClient, models
 import logging
+import json
 
-class QdrantDBProvider(VectorDBInterface):
+class QdrantDBProvider(VectordbInterface):
     def __init__(self, db_path: str,
                 distance_method: str
                 ):
@@ -16,7 +17,7 @@ class QdrantDBProvider(VectorDBInterface):
         if distance_method == DistanceMethodEnum.DOT.value:
             self.distance_method = models.Distance.DOT
         
-        self.logger = logging.getlogger(__name__)
+        self.logger = logging.getLogger(__name__)
 
     def connect(self):
         self.client = QdrantClient(path=self.db_path)
@@ -40,7 +41,7 @@ class QdrantDBProvider(VectorDBInterface):
                 vectors_config=models.VectorParams(size=embedding_size, distance=self.distance_method),
                 )
             return True
-        return False
+        return True
     
     def delete_collection(self, collection_name: str):
         if self.is_collection(collection_name=collection_name):
@@ -50,9 +51,13 @@ class QdrantDBProvider(VectorDBInterface):
         return self.client.get_collections()
 
     def get_collection_info(self, collection_name: str) -> dict:
-        return self.client.get_collection(collection_name=collection_name)
+        info = self.client.get_collection(collection_name=collection_name)
 
-    def inset_one(self, 
+        return json.loads(
+            json.dumps(info, default=lambda x: x.__dict__)
+        )
+
+    def insert_one(self, 
                 collection_name: str,
                 text: str, vector: list,
                 metadata: dict = None,
@@ -62,9 +67,10 @@ class QdrantDBProvider(VectorDBInterface):
             return False
 
         try:
-            _ = self.client.upload_records(
+            _ = self.client.upload_points(
                 collection_name=collection_name,
-                records= models.Record(
+                points= models.PointStruct(
+                    id=record_id,
                     vector=vector,
                     payload={
                         "metadata":metadata,
@@ -77,8 +83,8 @@ class QdrantDBProvider(VectorDBInterface):
 
         return True
 
-    def inset_many(self, 
-                collection_name: list,
+    def insert_many(self, 
+                collection_name: str,
                 text: list, vector: list,
                 metadata: list = None,
                 record_ids: list = None,
@@ -86,7 +92,7 @@ class QdrantDBProvider(VectorDBInterface):
         if not metadata:
             metadata = [None] * len(text)
         if not record_ids:
-            record_ids = [None] * len(text)
+            record_ids = list(range(0, len(text)))
 
         for i in range(0, len(text), batch_size):
             batch_end = i + batch_size
@@ -94,9 +100,11 @@ class QdrantDBProvider(VectorDBInterface):
             batch_texts = text[i:batch_end]
             batch_vectors = vector[i:batch_end]
             batch_metadatas = metadata[i:batch_end]
+            batch_record_ids = record_ids[i:batch_end]
 
-            batch_records = [
-                models.Record(
+            batch_points = [
+                models.PointStruct(
+                    id=batch_record_ids[x],
                     vector = batch_vectors[x],
                     payload = {
                         "text": batch_texts[x],
@@ -105,10 +113,12 @@ class QdrantDBProvider(VectorDBInterface):
                 )
                 for x in range(len(batch_texts))
             ]
-            try: 
-                _ = self.client.upload_records(
+            try:
+                self.client.upload_points(
                     collection_name=collection_name,
-                    records=batch_records)
+                    points=batch_points,
+                ) 
+                
             except Exception as e:
                 self.logger.error(f"error while inserting batch: {e}.")
                 return False
@@ -118,10 +128,15 @@ class QdrantDBProvider(VectorDBInterface):
     def search_by_vector(self, 
                         collection_name: str,
                         vector: list,
-                        limit: int = 5):
+                        limit: int):
 
-        return self.client.search(
-            collection_name=collection_name,
-            query_vector=vector,
-            limit=limit
+        query_res = self.client.query_points(
+                    collection_name=collection_name,
+                    query=vector,
+                    limit=limit,
+                    with_payload=True
+                )
+        
+        return json.loads(
+            json.dumps(query_res, default=lambda x: x.__dict__)
         )

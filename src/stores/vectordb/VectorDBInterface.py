@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-class VectordbInterfafce(ABC):
+class VectordbInterface(ABC):
 
     @classmethod
     @abstractmethod
@@ -43,7 +43,7 @@ class VectordbInterfafce(ABC):
 
     @classmethod
     @abstractmethod
-    def inset_one(self, 
+    def insert_one(self, 
                 collection_name: str,
                 text: str, vector: list,
                 metadata: dict = None,
@@ -52,7 +52,7 @@ class VectordbInterfafce(ABC):
 
     @classmethod
     @abstractmethod
-    def inset_many(self, 
+    def insert_many(self, 
                 collection_name: list,
                 text: list, vector: list,
                 metadata: list = None,
