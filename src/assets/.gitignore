@@ -1,5 +1,0 @@
-files/*
-!files/.gitkeep
-
-database/*
-!database/.gitkeep
