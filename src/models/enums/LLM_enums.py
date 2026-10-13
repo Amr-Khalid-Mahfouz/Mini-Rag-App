@@ -1,0 +1,26 @@
+from enum import Enum
+
+class LLMEnum(Enum):
+    OPENAI = "OPENAI"
+    COHERE = "COHERE"
+    QWEN = "QWEN"
+
+class QwenEnum(Enum):
+    pass
+
+class OpenAIEnum(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+
+class CohereEnum(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+
+    DOCUMENT = 'search_document'
+    QUERY = 'search_query'
+
+class DocumentType(Enum):
+    DOCUMENT = 'document'
+    QUERY = 'query'
