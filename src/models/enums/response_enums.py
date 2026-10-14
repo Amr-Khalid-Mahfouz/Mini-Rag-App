@@ -21,3 +21,6 @@ class ResponseSignal(Enum):
     
     COLLECTION_SEARCH_FAILED = "collection_was_not_found"
     COLLECTION_SEARCH_SUCCEEDED = "collection_was_found"
+
+    ANSWER_RAG_FAILED = "rag_answer_generation_failed"
+    ANSWER_RAG_SUCCEEDED = "rag_answer_generation_succeeded"

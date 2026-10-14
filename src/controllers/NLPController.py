@@ -4,16 +4,21 @@ from typing import List
 from models.enums import DocumentType
 from stores.vectordb import VectordbInterface
 from stores.LLM import LLMInterface
-import asyncio
+from models.db_schemas import RetrievedDocument
+from stores.templates.template_parser import TemplateParser
 
 class NLPController(BaseController):
 
-    def __init__(self, vectodb_client: VectordbInterface, generation_client: LLMInterface, embedding_client: LLMInterface):
+    def __init__(self, vectodb_client: VectordbInterface,
+                  generation_client: LLMInterface, 
+                  embedding_client: LLMInterface,
+                  template_parser: TemplateParser):
         super().__init__()
 
         self.vectodb_client = vectodb_client
         self.generation_client = generation_client
         self.embedding_client = embedding_client
+        self.template_parser = template_parser
 
     def create_Collection_name(self, project_id: str):
         return f"collection_{project_id}".strip()
@@ -63,11 +68,51 @@ class NLPController(BaseController):
             limit=limit
         )
 
+        if not results:
+            return None
+
         return [
-            {
-                "text": result.payload.text,
+            RetrievedDocument(** {
+                "text": result.payload["text"],
                 "score": result.score
-                }
-            for result in results
-                ]
+            })
+                for result in results.points
+            ]
+
+    def answer_rag_question(self, project: Project, text: str, limit: int = 10):
         
+        answer, full_prompt, chat_history = None, None, None 
+        retrieved_documents = self.search_vectordb_collection(project, text, limit)
+
+        if not retrieved_documents or len(retrieved_documents) == 0:
+            return answer, full_prompt, chat_history
+
+        system_prompt = self.template_parser.get("rag", "system_prompt")
+        
+        document_prompts = "\n".join(
+            [
+            self.template_parser.get(group="rag",
+                                key="document_prompt",
+                                vars={
+                                    "doc_num": idx + 1,
+                                    "chunk_text": doc.text
+                                      })
+
+              for idx, doc in enumerate(retrieved_documents)
+            ]
+        )
+
+        footer_prompt = self.template_parser.get("rag", "footer_prompt", vars={"user_query": text})
+
+        full_prompt = "\n\n".join([document_prompts, footer_prompt])
+
+        chat_history = [
+            self.generation_client.construct_prompt(
+                prompt=system_prompt,
+                role=self.generation_client.enums.SYSTEM.value
+            )
+        ]
+
+        answer = self.generation_client.generate_text(prompt=full_prompt, chat_history=chat_history)
+        
+        return answer, full_prompt, chat_history

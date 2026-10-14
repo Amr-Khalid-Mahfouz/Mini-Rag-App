@@ -10,6 +10,26 @@ from models.db_schemas import DataChunk, Asset, Project
 
 logger = logging.getLogger('uvicorn.error')
 
+async def get_project_and_nlp_controller(project_id: str, request: Request):
+    project_model = await ProjectModel.create_instance(request.app.db_client)
+    project = await project_model.get_project_or_create(project_id)
+
+    if not project:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "signal": ResponseSignal.PORJECT_NOT_FOUND.value
+            }
+        )
+
+    nlp_controller = NLPController(
+        vectodb_client=request.app.vectordb_client,
+        generation_client=request.app.generation_client,
+        embedding_client=request.app.embedding_client,
+        template_parser = request.app.template_parser)
+    
+    return project, nlp_controller
+
 nlp_router = APIRouter(
     prefix="/api/v1/nlp",
     tags=['nlp', 'api_v1']
@@ -37,7 +57,8 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
     nlp_controller = NLPController(
         vectodb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
-        embedding_client=request.app.embedding_client)
+        embedding_client=request.app.embedding_client,
+        template_parser = request.app.template_parser)
 
     chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
 
@@ -103,7 +124,8 @@ async def get_project_info(request: Request, project_id: str):
     nlp_controller = NLPController(
         vectodb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
-        embedding_client=request.app.embedding_client)
+        embedding_client=request.app.embedding_client,
+        template_parser = request.app.template_parser)
 
     info = nlp_controller.get_vector_collection_info(project)
 
@@ -130,11 +152,12 @@ async def search(request: Request, project_id: str, search_request: SearchReques
     nlp_controller = NLPController(
         vectodb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
-        embedding_client=request.app.embedding_client)
+        embedding_client=request.app.embedding_client,
+        template_parser = request.app.template_parser)
 
     res = nlp_controller.search_vectordb_collection(project, search_request.text, search_request.limit)
 
-    if not res or len(res) == 0:
+    if not res:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content= {
@@ -145,6 +168,29 @@ async def search(request: Request, project_id: str, search_request: SearchReques
     return JSONResponse(
         content= {
             "signal": ResponseSignal.COLLECTION_SEARCH_SUCCEEDED.value,
-            "most_similar_texts": res
+            "most_similar_texts": [x.model_dump() for x in res]
         }
     )
+
+@nlp_router.post('/index/answer/{project_id}')
+async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
+    project, nlp_controler = await get_project_and_nlp_controller(project_id=project_id, request= request)
+
+    answer, full_prompt, chat_history = nlp_controler.answer_rag_question(project, search_request.text, search_request.limit)
+
+    if not answer:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content= {
+                "signal": ResponseSignal.ANSWER_RAG_FAILED.value
+            }
+        )
+
+    return JSONResponse(
+        content= {
+            "signal": ResponseSignal.ANSWER_RAG_SUCCEEDED.value,
+            "answer": answer,
+            "full_prompt": full_prompt,
+            "chat_history": chat_history 
+            }
+        )

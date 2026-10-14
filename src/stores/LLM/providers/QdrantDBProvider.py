@@ -137,6 +137,4 @@ class QdrantDBProvider(VectordbInterface):
                     with_payload=True
                 )
         
-        return json.loads(
-            json.dumps(query_res, default=lambda x: x.__dict__)
-        )
+        return query_res
