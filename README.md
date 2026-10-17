@@ -18,9 +18,16 @@ a minimal Rag model, for xxxx (still don't know)
 ```
 
 ## Install the needed Libraries for this project:
+- for Linux run this command before downloading the libraries:
+```bash
+    sudo apt update
+    sudo apt install libpq-dev gcc python3-dev
+```
+- then run this in src:
 ```Bash
 pip install -r requirements.txt
 ```
+
 
 ## Setup the Environment variables:
 ```Bash

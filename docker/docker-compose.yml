@@ -1,39 +1,237 @@
 services:
+  # ---------------------------------------------------------------------------
+  # Application
+  # ---------------------------------------------------------------------------
+  # FastAPI
+  fastapi:
+    build:
+      context: ..
+      dockerfile: docker/mini-rag/DockerFile
+
+    container_name: fastapi
+    volumes:
+      - fastapi_data:/app/assets # /app == /src
+    expose:
+      - "8000" # internal only, Nginx is the public entry point
+
+    environment:
+      MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      QDRANT_URL: http://qdrant:6333
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+    networks:
+      - backend
+    
+    restart: unless-stopped
+
+    env_file:
+      - ./.env.app
+
+  # Nginx (reverse proxy), config is defined in the `configs:` section below
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - 
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/conf.d/default.conf
+    depends_on:
+      - fastapi
+    networks:
+      - backend
+    restart: always
+
+  # ---------------------------------------------------------------------------
+  # Databases
+  # ---------------------------------------------------------------------------
+  # MongoDB
   mongodb:
     image: mongo:8.3.11-noble
-    
     container_name: mongodb
-    
     ports:
-      - "27017:27017" #27017 is the default, the left side is the actual value, right side is the value I want
-    
+      # left = port on your machine, right = port inside the container
+      # 127.0.0.1 keeps it reachable only from your own machine
+      - "127.0.0.1:27017:27017"
     volumes:
-      - ./mongodb:/data/db
-
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?set MONGO_INITDB_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?set MONGO_INITDB_ROOT_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - backend
     restart: unless-stopped
 
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-
-  pgvector:
-    image: pgvector/pgvector:0.8.7-pg18-trixie
-
-    container_name: pgvector
-
+  # Qdrant (vector DB)
+  qdrant:
+    image: qdrant/qdrant:latest # pin a specific version once you have one that works
+    container_name: qdrant
     ports:
-      - "5432:5432"
-
+      - "127.0.0.1:6333:6333" # REST + dashboard (/dashboard)
+      - "127.0.0.1:6334:6334" # gRPC
     volumes:
-      - pgvector_data:/var/lib/postgresql
-
+      - qdrant_data:/qdrant/storage
+    networks:
+      - backend
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Monitoring
+  # ---------------------------------------------------------------------------
+  # MongoDB Exporter
+  mongodb-exporter:
+    image: percona/mongodb_exporter:latest # pin a specific version once you have one that works
+    container_name: mongodb-exporter
+    command:
+      - --collect-all
+      - --compatible-mode
     environment:
-      - POSTGRES_PASSWORD= ${POSTGRES_PASSWORD}
+      # if the password has special characters (@ : / #) URL-encode it here
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+    expose:
+      - "9216"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # Node Exporter (CPU / RAM / disk metrics)
+  node-exporter:
+    image: prom/node-exporter:latest # pin a specific version once you have one that works
+    container_name: node-exporter
+    volumes:
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      - '/:/rootfs:ro'
+    expose:
+      - "9100"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest # pin a specific version once you have one that works
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+    depends_on:
+      - node-exporter
+      - mongodb-exporter
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest # pin a specific version once you have one that works
+    container_name: grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_USERS_ALLOW_SIGN_UP:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_USERS_ALLOW_SIGN_UP:?set GF_USERS_ALLOW_SIGN_UP in .env}
+      GF_USERS_ALLOW_SIGN_UP: ${GF_USERS_ALLOW_SIGN_UP}
+    configs:
+      - source: grafana_datasource
+        target: /etc/grafana/provisioning/datasources/datasource.yml
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+    restart: unless-stopped
 
 networks:
   backend:
+    driver: bridge
 
 volumes:
-  pgvector_data:
+  mongodb_data:
+  qdrant_data:
+  prometheus_data:
+  grafana_data:
+  fastapi_data:
+
+# Inline config files (needs Docker Compose v2.23.1 or newer).
+configs:
+  nginx_conf:
+    content: |
+      server {
+        listen 80;
+        client_max_body_size 50m;
+
+        location / {
+          proxy_pass http://fastapi:8000;
+          proxy_set_header Host $$host;
+          proxy_set_header X-Real-IP $$remote_addr;
+          proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $$scheme;
+          proxy_read_timeout 300s; # long LLM responses
+        }
+      }
+
+  prometheus_yml:
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+
+      scrape_configs:
+        - job_name: fastapi
+          static_configs:
+            -targets: ["fastapi:8000"]
+          metrics_path: '/metrics'
+
+        - job_name: prometheus
+          static_configs:
+            - targets: ["localhost:9090"]
+
+        - job_name: node
+          static_configs:
+            - targets: ["node-exporter:9100"]
+
+        - job_name: mongodb
+          static_configs:
+            - targets: ["mongodb-exporter:9216"]
+
+        - job_name: qdrant
+          metrics_path: /metrics
+          static_configs:
+            - targets: ["qdrant:6333"]
+
+  grafana_datasource:
+    content: |
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: true

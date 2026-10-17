@@ -11,5 +11,13 @@ motor==3.7.1
 openai==3.26.0
 cohere==7.2.0
 qdrant-client==1.19.1
-SQLAlchemy==2.1.4
-asyncpg==0.32.0
+
+# SQLAlchemy==2.1.4
+# asyncpg==0.32.0
+# alembic==1.20.0
+# psycopg2==2.9.13
+# psycopg==3.3.6
+
+prometheus-client==0.26.0
+starlette-exporter==0.24.0
+fastapi-health==0.4.0
